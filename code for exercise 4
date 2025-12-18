@@ -1,0 +1,33 @@
+import sys
+import re
+from pyspark import SparkContext, SparkConf
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit(-1)
+    
+    conf = SparkConf().setAppName("python-longest-word")
+    sc = SparkContext(conf=conf)
+    
+    text_file = sc.textFile("s3a://" + sys.argv[1])
+    
+    def validate_and_clean(word):
+        if not word:
+            return None
+        
+        cleaned = word.strip(".,")
+        
+        if cleaned.isalpha():
+            return cleaned
+        return None
+
+    words = text_file.flatMap(lambda line: line.split(" ")) \
+                     .map(validate_and_clean) \
+                     .filter(lambda x: x is not None)
+
+    longest = words.reduce(lambda a, b: a if len(a) >= len(b) else b)
+
+    print("--------------------------------------------")
+    print("The longest word found is:", longest)
+    print("Length:", len(longest))
+    print("--------------------------------------------")
